@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AMO Terengganu - Sliding Puzzle Ambulans</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
+    body { text-align: center; background: #0f172a; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 15px; }
+    h1 { font-size: 22px; color: #38bdf8; text-shadow: 0 0 10px rgba(56, 189, 248, 0.5); margin-bottom: 4px; }
+    p.sub { font-size: 13px; color: #94a3b8; margin-bottom: 15px; }
+
+    /* DASHBOARD MASA & PERGERAKAN */
+    .dashboard { display: flex; justify-content: space-around; width: 300px; background: #1e293b; padding: 10px; border-radius: 10px; border: 1px solid #38bdf8; margin-bottom: 15px; }
+    .dash-box { font-size: 14px; font-weight: bold; }
+    .dash-box span { font-size: 18px; color: #facc15; }
+
+    /* GRID PUZZLE 3x3 */
+    .puzzle-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; width: 300px; height: 300px; background: #334155; padding: 8px; border-radius: 12px; border: 3px solid #0284c7; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+    .tile { background: #0284c7; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: bold; cursor: pointer; user-select: none; border: 2px solid #38bdf8; transition: background 0.2s; }
+    .tile.empty { background: #0f172a; border: 2px dashed #334155; cursor: default; }
+
+    /* BUTANG UTAMA */
+    .btn-start { width: 300px; padding: 12px; background: #22c55e; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; margin-top: 10px; box-shadow: 0 4px 10px rgba(34, 197, 94, 0.4); }
+    .btn-view-all { width: 300px; padding: 12px; background: linear-gradient(135deg, #0284c7, #0369a1); color: white; border: 1px solid #38bdf8; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; margin-top: 10px; }
+
+    /* BORANG SKOR DINAMIK */
+    .form-container { margin-top: 15px; background: #1e293b; padding: 18px; border-radius: 12px; width: 300px; text-align: left; box-shadow: 0 8px 16px rgba(0,0,0,0.4); }
+    label { font-size: 12px; color: #cbd5e0; margin-top: 6px; display: block; }
+    input, select { width: 100%; padding: 9px; margin: 4px 0 8px 0; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: white; font-size: 13px; }
+    button.btn-submit { width: 100%; padding: 10px; background: #0284c7; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; margin-top: 5px; }
+
+    /* POP-UP MODAL CARTA TOP 10 */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 999; justify-content: center; align-items: center; padding: 15px; }
+    .modal-content { background: #1e293b; border: 1px solid #38bdf8; border-radius: 16px; padding: 20px; width: 100%; max-width: 450px; max-height: 90vh; display: flex; flex-direction: column; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+    .modal-header h3 { color: #facc15; font-size: 17px; }
+    .close-btn { background: none; border: none; color: #94a3b8; font-size: 22px; cursor: pointer; font-weight: bold; }
+
+    /* PODIUM TOP 3 TERPERINCI */
+    .podium-container { display: flex; justify-content: center; align-items: flex-end; gap: 10px; margin-bottom: 15px; width: 100%; height: 185px; }
+    .podium { display: flex; flex-direction: column; align-items: center; justify-content: space-between; border-radius: 10px 10px 0 0; padding: 8px 4px; width: 32%; color: #0f172a; font-weight: bold; font-size: 11px; }
+    .podium .score { font-size: 13px; font-weight: 800; background: rgba(255,255,255,0.3); padding: 2px 6px; border-radius: 10px; }
+    .podium .name { font-size: 11px; line-height: 1.2; margin-top: 2px; text-align: center; color: #0f172a; font-weight: 800; word-break: break-word; }
+    .podium .details { font-size: 9px; line-height: 1.1; margin-top: 2px; text-align: center; }
+
+    .rank-1 { height: 170px; background: linear-gradient(135deg, #ffe066, #f59e0b); border: 2px solid #fbbf24; order: 2; }
+    .rank-2 { height: 140px; background: linear-gradient(135deg, #e2e8f0, #94a3b8); border: 2px solid #cbd5e0; order: 1; }
+    .rank-3 { height: 115px; background: linear-gradient(135deg, #fdba74, #b45309); border: 2px solid #f97316; order: 3; color: white; }
+    .rank-3 .name { color: white; }
+
+    .rank-list { text-align: left; background: #0f172a; border-radius: 8px; padding: 8px; overflow-y: auto; flex-grow: 1; max-height: 200px; }
+    .rank-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 1px solid #1e293b; font-size: 12px; }
+    .rank-num { font-weight: bold; color: #38bdf8; width: 28px; }
+  </style>
+</head>
+<body>
+
+  <h1>🧩 AMO Terengganu: Sliding Puzzle</h1>
+  <p class="sub">Susun nombor 1 hingga 8 mengikut turutan dalam masa terpantas!</p>
+
+  <div class="dashboard">
+    <div class="dash-box">Masa: <span id="timer">0</span>s</div>
+    <div class="dash-box">Langkah: <span id="moves">0</span></div>
+  </div>
+
+  <div class="puzzle-board" id="board"></div>
+
+  <button class="btn-start" id="startBtn" onclick="mulaGame()">MULA GAME ▶️</button>
+  <button class="btn-view-all" onclick="openModal()">📜 Lihat Top 10 Carta Kedudukan</button>
+
+  <!-- BORANG PENDAFTARAN DINAMIK -->
+  <div class="form-container" id="scoreForm" style="display: none;">
+    <h3 style="text-align: center; color: #facc15;">SYABAS, PUZZLE SIAP!</h3>
+    <p style="text-align: center; font-size: 14px; margin-bottom: 10px;">Markah Skor: <b id="finalScore" style="font-size: 20px; color: #4ade80;">0</b> pts</p>
+    
+    <label>Nama Penuh / FB:</label>
+    <input type="text" id="nama" placeholder="Ahmad Zaki" required>
+    
+    <label>No. WhatsApp:</label>
+    <input type="tel" id="noTel" placeholder="0139876543" required>
+    
+    <label>Daerah / Negeri Asal:</label>
+    <select id="daerah" onchange="tukarDaerah()" required>
+      <option value="">-- Pilih Daerah / Luar Negeri --</option>
+      <option value="Kuala Terengganu">Kuala Terengganu</option>
+      <option value="Kuala Nerus">Kuala Nerus</option>
+      <option value="Marang">Marang</option>
+      <option value="Hulu Terengganu">Hulu Terengganu</option>
+      <option value="Dungun">Dungun</option>
+      <option value="Kemaman">Kemaman</option>
+      <option value="Besut">Besut</option>
+      <option value="Setiu">Setiu</option>
+      <option value="Luar Terengganu">Luar Terengganu (Taip Negeri/Daerah)</option>
+    </select>
+
+    <div id="boxLuarTerengganu" style="display: none;">
+      <label>Nyatakan Negeri / Daerah Anda:</label>
+      <input type="text" id="daerahLuar" placeholder="Contoh: Kuantan, Pahang / Kota Bharu, Kelantan">
+    </div>
+
+    <label>Kategori:</label>
+    <select id="kategori" onchange="tukarKategori()">
+      <option value="Orang Awam">Orang Awam</option>
+      <option value="Warga KKM">Warga KKM</option>
+    </select>
+
+    <div id="boxJawatan" style="display: none;">
+      <label>Jawatan / Gelaran (Cth: AMO, Jururawat, Doktor, Farmasi):</label>
+      <input type="text" id="jawatan" placeholder="Contoh: Penolong Pegawai Perubatan (AMO)">
+    </div>
+
+    <button class="btn-submit" onclick="hantarSkor()">Hantar Skor 🏆</button>
+    <p id="statusMsg" style="margin-top: 8px; font-size: 12px; text-align: center; font-weight: bold;"></p>
+  </div>
+
+  <!-- POPUP LEADERBOARD TOP 10 -->
+  <div class="modal-overlay" id="leaderboardModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>🏆 Carta Top 10 Pemain</h3>
+        <button class="close-btn" onclick="closeModal()">✕</button>
+      </div>
+
+      <div class="podium-container">
+        <div class="podium rank-2">
+          <span>🥈 PERAK</span>
+          <div class="name" id="p2-name">-</div>
+          <div class="details"><span id="p2-daerah">-</span><br><b id="p2-kat">-</b></div>
+          <div class="score" id="p2-score">0 pts</div>
+        </div>
+        <div class="podium rank-1">
+          <span>👑 EMAS</span>
+          <div class="name" id="p1-name">-</div>
+          <div class="details"><span id="p1-daerah">-</span><br><b id="p1-kat">-</b></div>
+          <div class="score" id="p1-score">0 pts</div>
+        </div>
+        <div class="podium rank-3">
+          <span>🥉 GANGSA</span>
+          <div class="name" id="p3-name">-</div>
+          <div class="details"><span id="p3-daerah">-</span><br><b id="p3-kat">-</b></div>
+          <div class="score" id="p3-score">0 pts</div>
+        </div>
+      </div>
+
+      <h4 style="text-align: left; font-size: 12px; color: #94a3b8; margin-bottom: 6px;">Kedudukan #4 hingga #10:</h4>
+      <div class="rank-list" id="rankList">
+        <p style="text-align: center; color: #64748b; padding: 15px;">Memuatkan kedudukan...</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // PASTE URL GOOGLE APPS SCRIPT ANDA DI SINI
+    const SCRIPT_URL = "https://script.google.com/a/macros/moh.gov.my/s/AKfycby-EIW3S8SlsAXxipPGn3DAkDHFFLYeKHBMlk-9tSfCiMksUaauein5wS-ufU3KURrq/exec";
+
+    let state = [1, 2, 3, 4, 5, 6, 7, 8, ""];
+    let moves = 0;
+    let timer = 0;
+    let timerInterval = null;
+    let gameStarted = false;
+    let finalCalculatedScore = 0;
+
+    const board = document.getElementById("board");
+    const timerDisplay = document.getElementById("timer");
+    const movesDisplay = document.getElementById("moves");
+    const startBtn = document.getElementById("startBtn");
+
+    function drawBoard() {
+      board.innerHTML = "";
+      state.forEach((val, idx) => {
+        const tile = document.createElement("div");
+        tile.classList.add("tile");
+        if (val === "") {
+          tile.classList.add("empty");
+        } else {
+          tile.innerText = val;
+          tile.addEventListener("click", () => moveTile(idx));
+        }
+        board.appendChild(tile);
+      });
+    }
+
+    function shuffle() {
+      do {
+        for (let i = state.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [state[i], state[j]] = [state[j], state[i]];
+        }
+      } while (!isSolvable() || checkWin());
+    }
+
+    function isSolvable() {
+      let inversions = 0;
+      let flatState = state.filter(x => x !== "");
+      for (let i = 0; i < flatState.length; i++) {
+        for (let j = i + 1; j < flatState.length; j++) {
+          if (flatState[i] > flatState[j]) inversions++;
+        }
+      }
+      return inversions % 2 === 0;
+    }
+
+    function moveTile(idx) {
+      if (!gameStarted) return;
+      const emptyIdx = state.indexOf("");
+
+      if (Math.abs(idx % 3 - emptyIdx % 3) + Math.abs(Math.floor(idx / 3) - Math.floor(emptyIdx / 3)) === 1) {
+        [state[idx], state[emptyIdx]] = [state[emptyIdx], state[idx]];
+        moves++;
+        movesDisplay.innerText = moves;
+        drawBoard();
+
+        if (checkWin()) endGame();
+      }
+    }
+
+    function checkWin() {
+      const winState = [1, 2, 3, 4, 5, 6, 7, 8, ""];
+      return state.every((val, idx) => val === winState[idx]);
+    }
+
+    function mulaGame() {
+      state = [1, 2, 3, 4, 5, 6, 7, 8, ""];
+      shuffle();
+      moves = 0;
+      timer = 0;
+      gameStarted = true;
+      movesDisplay.innerText = moves;
+      timerDisplay.innerText = timer;
+      document.getElementById("scoreForm").style.display = "none";
+
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        timer++;
+        timerDisplay.innerText = timer;
+      }, 1000);
+
+      startBtn.disabled = true;
+      startBtn.style.opacity = "0.5";
+      drawBoard();
+    }
+
+    function endGame() {
+      clearInterval(timerInterval);
+      gameStarted = false;
+
+      // Formula Skor: Semakin laju & kurang pergerakan, semakin tinggi mata!
+      finalCalculatedScore = Math.max(10, 1000 - (timer * 8) - (moves * 4));
+
+      document.getElementById("finalScore").innerText = finalCalculatedScore;
+      document.getElementById("scoreForm").style.display = "block";
+      startBtn.disabled = false;
+      startBtn.style.opacity = "1";
+    }
+
+    function tukarDaerah() {
+      let d = document.getElementById("daerah").value;
+      document.getElementById("boxLuarTerengganu").style.display = (d === "Luar Terengganu") ? "block" : "none";
+    }
+
+    function tukarKategori() {
+      let kat = document.getElementById("kategori").value;
+      document.getElementById("boxJawatan").style.display = (kat === "Warga KKM") ? "block" : "none";
+    }
+
+    function openModal() { document.getElementById("leaderboardModal").style.display = "flex"; }
+    function closeModal() { document.getElementById("leaderboardModal").style.display = "none"; }
+
+    function loadLeaderboard() {
+      fetch(SCRIPT_URL)
+        .then(res => res.json())
+        .then(data => {
+          if (!data || data.length === 0) return;
+
+          if (data[0]) { document.getElementById("p1-name").innerText = data[0].nama; document.getElementById("p1-daerah").innerText = data[0].daerah || "-"; document.getElementById("p1-kat").innerText = (data[0].kategori === "Warga KKM") ? data[0].jawatan : "Orang Awam"; document.getElementById("p1-score").innerText = data[0].score + " pts"; }
+          if (data[1]) { document.getElementById("p2-name").innerText = data[1].nama; document.getElementById("p2-daerah").innerText = data[1].daerah || "-"; document.getElementById("p2-kat").innerText = (data[0].kategori === "Warga KKM") ? data[1].jawatan : "Orang Awam"; document.getElementById("p2-score").innerText = data[1].score + " pts"; }
+          if (data[2]) { document.getElementById("p3-name").innerText = data[2].nama; document.getElementById("p3-daerah").innerText = data[2].daerah || "-"; document.getElementById("p3-kat").innerText = (data[2].kategori === "Warga KKM") ? data[2].jawatan : "Orang Awam"; document.getElementById("p3-score").innerText = data[2].score + " pts"; }
+
+          let rankListHTML = "";
+          for (let i = 3; i < data.length; i++) {
+            let labelJawatan = (data[i].kategori === "Warga KKM") ? data[i].jawatan : "Awam";
+            rankListHTML += `
+              <div class="rank-item">
+                <span class="rank-num">#${i + 1}</span>
+                <span><b>${data[i].nama}</b> (${data[i].daerah || 'Luar Terengganu'}) - <i style="font-size:11px; color:#cbd5e0;">${labelJawatan}</i></span>
+                <span style="color: #facc15; font-weight: bold;">${data[i].score} pts</span>
+              </div>
+            `;
+          }
+          document.getElementById("rankList").innerHTML = rankListHTML || "<p style='text-align:center; color:#64748b; padding:10px;'>Tiada data tambahan lagi.</p>";
+        })
+        .catch(err => console.error("Error loading leaderboard:", err));
+    }
+
+    function hantarSkor() {
+      let nama = document.getElementById("nama").value;
+      let noTel = document.getElementById("noTel").value;
+      let daerahSelect = document.getElementById("daerah").value;
+      let daerahLuar = document.getElementById("daerahLuar").value;
+      let kategori = document.getElementById("kategori").value;
+      let jawatan = document.getElementById("jawatan").value;
+      let statusMsg = document.getElementById("statusMsg");
+
+      let daerahFinal = daerahSelect;
+      if (daerahSelect === "Luar Terengganu") {
+        if (!daerahLuar) {
+          alert("Sila nyatakan Negeri/Daerah asal anda!");
+          return;
+        }
+        daerahFinal = daerahLuar;
+      }
+
+      if (!nama || !noTel || !daerahSelect) {
+        alert("Sila isi Nama, No. WhatsApp, dan Pilih Daerah!");
+        return;
+      }
+
+      if (kategori === "Warga KKM" && !jawatan) {
+        alert("Sila nyatakan jawatan anda!");
+        return;
+      }
+
+      statusMsg.style.color = "#facc15";
+      statusMsg.innerText = "Menghantar data...";
+
+      fetch(SCRIPT_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nama: nama, noTel: noTel, daerah: daerahFinal, kategori: kategori, jawatan: jawatan, score: finalCalculatedScore })
+      })
+      .then(() => {
+        statusMsg.style.color = "#4ade80";
+        statusMsg.innerText = "✅ Skor berjaya dihantar!";
+        setTimeout(() => { loadLeaderboard(); }, 1500);
+      })
+      .catch(err => {
+        statusMsg.style.color = "#f87171";
+        statusMsg.innerText = "❌ Gagal hantar data.";
+      });
+    }
+
+    drawBoard();
+    loadLeaderboard();
+  </script>
+</body>
+</html>
